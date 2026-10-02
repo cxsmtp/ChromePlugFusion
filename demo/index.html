@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Badge Line Highlighter demo</title>
+  <style>
+    body { font: 13px system-ui, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    td { padding: 8px 12px; border-bottom: 1px solid #eee; background: #fff; }
+    .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border: 1px solid #c62828; border-radius: 3px; color: #c62828; font-size: 11px; }
+    .new { background: #eef; color: #88a; padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid #3f51b5; border-radius: 4px; background: #fff; color: #3f51b5; font: inherit; }
+    svg { width: 11px; height: 11px; }
+  </style>
+</head>
+<body>
+  <p>Load the extension, open this page, click the toolbar icon → <b>Pick a badge on this page</b>, then click a <b>SAST ✦</b> chip.
+  A new row is added every 3 seconds to show live highlighting.</p>
+  <section style="max-width:460px;margin-bottom:20px">
+    <div style="font-size:20px;font-weight:600">Improper Neutralization of Spe…</div>
+    <div id="state" style="color:#555"></div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn" style="background:#3f51b5;color:#fff;border-color:#3f51b5">Triage →</button>
+      <button class="btn ai">Triage with AI</button>
+      <button class="btn ai">Remediate with AI</button>
+    </div>
+  </section>
+  <table><tbody id="rows"></tbody></table>
+
+  <template id="sparkle">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.6 5.2L15 7l-5.4 1.8L8 14l-1.6-5.2L1 7l5.4-1.8z"/><path d="M13 11h1v1.5h1.5v1H14V15h-1v-1.5h-1.5v-1H13z"/></svg>
+  </template>
+  <template id="shield">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V3z"/></svg>
+  </template>
+
+  <script>
+    const icon = (id) => document.getElementById(id).innerHTML;
+    const rows = [
+      ["SAST", false, "Command_Injection", "Proposed"],
+      ["SAST", false, "Command_Injection", "Proposed"],
+      ["SAST", true, "Improper Neutralization of Special El...", "Proposed"],
+      ["SAST", true, "Missing Authentication for Critical F...", "Confirmed"],
+      ["SCA", true, "Vulnerable package", "To Verify"],
+      ["SAST", false, "Hardcoded secret", "To Verify"]
+    ];
+    function addRow([scanner, sparkle, name, state]) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input type="checkbox"></td>
+        <td><span class="chip">${icon("shield")} Critical</span></td>
+        <td><span class="chip">${scanner} ${sparkle ? icon("sparkle") : ""}</span></td>
+        <td>${name} <span class="new">New</span></td>
+        <td>${state} ${icon("sparkle")}</td>
+        <td>webapp</td>`;
+      document.getElementById("rows").appendChild(tr);
+    }
+    rows.forEach(addRow);
+    document.querySelectorAll(".ai").forEach((b) => b.insertAdjacentHTML("afterbegin", icon("sparkle")));
+    document.getElementById("state").innerHTML = icon("sparkle") + " Proposed Not Exploitable";
+    let n = 0;
+    setInterval(() => n < 6 && addRow([n % 2 ? "SAST" : "IaC", n++ % 3 !== 0, "Added later #" + n, "To Verify"]), 3000);
+  </script>
+</body>
+</html>

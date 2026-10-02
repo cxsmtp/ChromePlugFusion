@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Badge Line Highlighter",
+  "version": "1.0.0",
+  "description": "Highlights the line the moment a button with a sparkle icon (e.g. \"SAST ✦\") appears on the page.",
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Badge Line Highlighter",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ]
+}

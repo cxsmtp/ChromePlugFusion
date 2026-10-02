@@ -1,0 +1,75 @@
+.cpf-hl-line {
+  background-color: var(--cpf-line-bg, #ffd700) !important;
+  box-shadow: inset 4px 0 0 var(--cpf-accent, #b8860b) !important;
+  transition: background-color 0.3s ease;
+}
+
+.cpf-hl-badge {
+  outline: 2px solid var(--cpf-accent, #b8860b) !important;
+  outline-offset: 2px !important;
+  border-radius: 6px;
+}
+
+.cpf-hl-flash {
+  animation: cpf-flash 1.2s ease-out 1;
+}
+
+@keyframes cpf-flash {
+  0%   { background-color: var(--cpf-accent, #b8860b); }
+  100% { background-color: var(--cpf-line-bg, #ffd700); }
+}
+
+/* Pick mode */
+.cpf-pick-hover {
+  outline: 2px dashed #0969da !important;
+  outline-offset: 2px !important;
+  cursor: crosshair !important;
+}
+
+#cpf-pick-banner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  background: #0969da;
+  color: #fff;
+  font: 13px/1.4 system-ui, sans-serif;
+  padding: 8px 14px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+/* Table cells often paint their own background; tint them too. */
+.cpf-hl-line > td,
+.cpf-hl-line > th,
+.cpf-hl-line > [role="gridcell"],
+.cpf-hl-line > [role="cell"] {
+  background-color: var(--cpf-line-bg, #ffd700) !important;
+}
+
+/* Standalone buttons with the icon, e.g. "Triage with AI" / "Remediate with AI". */
+.cpf-hl-button {
+  background-color: var(--cpf-line-bg, #ffd700) !important;
+  border-color: var(--cpf-accent, #b8860b) !important;
+  color: #3d2e00 !important;
+  box-shadow: 0 0 8px var(--cpf-line-bg, #ffd700) !important;
+  outline: none !important;
+}
+
+/* Glow on every occurrence of the icon. */
+.cpf-hl-icon {
+  color: var(--cpf-accent, #b8860b) !important;
+  animation: cpf-glow 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes cpf-glow {
+  from { filter: drop-shadow(0 0 1px var(--cpf-line-bg, #ffd700)); }
+  to   { filter: drop-shadow(0 0 4px var(--cpf-line-bg, #ffd700)) drop-shadow(0 0 7px var(--cpf-line-bg, #ffd700)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cpf-hl-icon { animation: none; filter: drop-shadow(0 0 4px var(--cpf-line-bg, #ffd700)); }
+  .cpf-hl-flash { animation: none; }
+}
