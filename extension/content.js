@@ -3,27 +3,21 @@
 // containing a word plus the target icon (e.g. "SAST ✦") appears.
 
 (() => {
-  // The popup may inject this script again into a tab that already has it.
-  if (window.__cpfLoaded) return;
-  window.__cpfLoaded = true;
-
   const DEFAULTS = {
     enabled: true,
     lineColor: "#ffd700", // gold
     accentColor: "#b8860b", // dark gold
-    words: "", // comma separated; empty = any word
-    learned: [] // [{ sig, label }]
+    words: "" // comma separated; empty = any word
   };
 
   const SPARKLE_CHARS = /[✦✧✨❇❈✱✲✳✴✶✷✸✹✺✻✼✽❋⁂✢✣✤✥]/;
-  const SPARKLE_NAMES = /sparkle|stars?\b|magic|\bai\b|copilot/i;
+  const SPARKLE_NAMES = /sparkl|auto-?awesome|magic|\bai\b|gen-?ai|copilot/i;
   const ICON_SELECTOR = "svg, img, i, [class*='icon' i], [data-icon]";
   const ROW_SELECTOR = "tr, [role='row'], li, [role='listitem'], [role='treeitem']";
   const MAX_BADGE_TEXT = 30;
 
   let settings = { ...DEFAULTS };
   let wordList = [];
-  let learnedSigs = new Set();
   const highlighted = new Set(); // { line, badge } entries; line is null for gold buttons
   const glowing = new Set(); // icon elements with the glow effect
   let scanQueued = false;
@@ -32,41 +26,11 @@
 
   const normText = (s) => (s || "").replace(/\s+/g, " ").trim();
 
-  function iconSignature(icon) {
-    if (icon.nodeType === Node.TEXT_NODE) {
-      const m = icon.textContent.match(SPARKLE_CHARS);
-      return m ? "char:" + m[0] : null;
-    }
-    const tag = icon.tagName.toLowerCase();
-    // A wrapper like <span class="chip-icon"><svg/></span>: use the inner SVG instead,
-    // otherwise every chip icon (shield, sparkle, ...) would share the wrapper's class.
-    if (tag !== "svg" && tag !== "img" && icon.querySelector("svg, img")) return null;
-    if (tag === "svg") {
-      const use = icon.querySelector("use");
-      const href = use && (use.getAttribute("href") || use.getAttribute("xlink:href"));
-      if (href) return "use:" + href;
-      const paths = [...icon.querySelectorAll("path, circle, rect, polygon, line, polyline, ellipse")]
-        .map((p) => p.getAttribute("d") || p.getAttribute("points") || p.outerHTML.replace(/\s(class|style|fill|stroke)="[^"]*"/g, ""))
-        .join("|");
-      return paths ? "svg:" + hash(paths) : null;
-    }
-    if (tag === "img") return icon.getAttribute("src") ? "img:" + icon.getAttribute("src") : null;
-    const cls = typeof icon.className === "string" ? icon.className.trim() : "";
-    const dataIcon = icon.getAttribute("data-icon");
-    if (dataIcon) return "data:" + dataIcon;
-    return cls ? "cls:" + cls : null;
-  }
-
-  function hash(str) {
-    let h = 5381;
-    for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
-    return (h >>> 0).toString(36);
-  }
-
   function iconDescriptor(icon) {
     if (icon.nodeType === Node.TEXT_NODE) return "";
     const parts = [
       icon.getAttribute("class"),
+      icon.getAttribute("data-testid"),
       icon.getAttribute("aria-label"),
       icon.getAttribute("data-icon"),
       icon.getAttribute("alt"),
@@ -77,10 +41,15 @@
     return parts.filter(Boolean).join(" ");
   }
 
+  // Is this the sparkle icon? A ✦ character, an icon named like one, or an SVG
+  // whose outline has the four-pointed sparkle shape (see sparkle-shape.js).
   function iconMatches(icon) {
-    const sig = iconSignature(icon);
-    if (sig && learnedSigs.has(sig)) return true;
     if (icon.nodeType === Node.TEXT_NODE) return SPARKLE_CHARS.test(icon.textContent);
+    const tag = icon.tagName.toLowerCase();
+    // isSparkle caches its verdict per outline, so recycled rows stay cheap.
+    if (tag === "svg") return SPARKLE_NAMES.test(iconDescriptor(icon)) || cpfSparkleShape.isSparkle(icon);
+    // A wrapper like <span class="chip-icon"><svg/></span>: the inner SVG decides.
+    if (icon.querySelector("svg")) return false;
     return SPARKLE_NAMES.test(iconDescriptor(icon));
   }
 
@@ -242,7 +211,6 @@
   function applySettings(next) {
     settings = { ...DEFAULTS, ...next };
     wordList = settings.words.split(",").map((w) => w.trim().toLowerCase()).filter(Boolean);
-    learnedSigs = new Set((settings.learned || []).map((l) => l.sig));
     const root = document.documentElement.style;
     root.setProperty("--cpf-line-bg", settings.lineColor);
     root.setProperty("--cpf-accent", settings.accentColor);
@@ -250,92 +218,7 @@
     scan();
   }
 
-  // ---------- pick mode (teach the extension your exact icon) ----------
-
-  let picking = false;
-  let hoverEl = null;
-  let banner = null;
-
-  function startPick() {
-    if (picking || window !== window.top) return;
-    picking = true;
-    banner = document.createElement("div");
-    banner.id = "cpf-pick-banner";
-    banner.textContent = "Click the badge with the icon (e.g. SAST ✦). Press Esc to cancel.";
-    document.documentElement.appendChild(banner);
-    document.addEventListener("mouseover", onPickHover, true);
-    document.addEventListener("click", onPickClick, true);
-    document.addEventListener("keydown", onPickKey, true);
-  }
-
-  function stopPick() {
-    picking = false;
-    hoverEl && hoverEl.classList.remove("cpf-pick-hover");
-    hoverEl = null;
-    banner && banner.remove();
-    document.removeEventListener("mouseover", onPickHover, true);
-    document.removeEventListener("click", onPickClick, true);
-    document.removeEventListener("keydown", onPickKey, true);
-  }
-
-  function onPickHover(e) {
-    hoverEl && hoverEl.classList.remove("cpf-pick-hover");
-    hoverEl = e.target;
-    hoverEl.classList.add("cpf-pick-hover");
-  }
-
-  function onPickKey(e) {
-    if (e.key === "Escape") stopPick();
-  }
-
-  function onPickClick(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const target = e.target;
-    stopPick();
-
-    // Walk up from the click to the smallest element holding an icon, and take
-    // its icon (the clicked icon itself if the click landed on it).
-    let icon = null;
-    let badge = null;
-    for (let el = target, d = 0; el && el !== document.body && d < 6; d++, el = el.parentElement) {
-      if (badgeWord(el).length > MAX_BADGE_TEXT) break;
-      icon = [...iconCandidates(el)].find((i) => iconSignature(i));
-      if (icon) { badge = el; break; }
-    }
-    const sig = icon && iconSignature(icon);
-    if (!sig) {
-      toast("Couldn't find an icon there. Open the extension and try again, clicking right on the ✦ icon.", true);
-      return;
-    }
-    const label = badgeWord(badge) || badgeWord(badge.parentElement);
-    chrome.storage.sync.get(DEFAULTS, (cur) => {
-      const learned = (cur.learned || []).filter((l) => l.sig !== sig);
-      learned.push({ sig, label });
-      chrome.storage.sync.set({ learned }, () => toast(`Learned the icon from "${label || "badge"}" ✦`));
-    });
-  }
-
-  function toast(text, isError) {
-    const el = document.createElement("div");
-    el.id = "cpf-pick-banner";
-    el.textContent = text;
-    if (isError) el.style.background = "#d1242f";
-    document.documentElement.appendChild(el);
-    setTimeout(() => el.remove(), 3500);
-  }
-
   // ---------- wiring ----------
-
-  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg.type === "startPick") {
-      // Only the top frame runs pick mode; it answers so the popup knows it worked.
-      if (window !== window.top) return;
-      startPick();
-      sendResponse({ ok: true });
-    }
-    if (msg.type === "rescan") queueScan();
-  });
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "sync") return;

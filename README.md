@@ -16,18 +16,17 @@ New rows are detected live (`MutationObserver`), including in virtualized tables
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and select the `extension/` folder.
-3. Reload the page you want to use it on.
+3. Reload the page you want to use it on. That's it: highlighting is automatic.
 
-## Teach it your icon (do this once)
+## How the icon is recognised (no setup)
 
-The built-in detection recognises sparkle characters (✦ ✨ …) and icons named *sparkle* / *stars* / *ai*.
-If a site uses an unnamed SVG (as Checkmarx does):
+Nothing to pick or configure. An icon counts as the sparkle when it is:
 
-1. Click the extension's toolbar icon, then click **Pick a badge on this page**.
-2. Click one `SAST ✦` chip.
-
-The icon is saved, and every badge, button and spot using that same icon is matched on every site,
-whatever the word next to it. Learned icons are listed in the popup and can be removed there.
+- a sparkle character (✦ ✧ ✨ …), or
+- an icon named like one (`sparkle`, `auto_awesome`, `ai`, …), or
+- an SVG whose **outline is a four-pointed star**: long sharp points up/down/left/right with
+  pinched sides between them (`extension/sparkle-shape.js`). This is what catches unnamed icons
+  such as Checkmarx's. A `+`, `×`, shield, circle, 5-point star, logo, chevron, etc. don't match.
 
 ## Options (toolbar popup)
 
@@ -38,5 +37,5 @@ whatever the word next to it. Learned icons are listed in the popup and can be r
 
 ## Try it
 
-Open `demo/index.html` (allow file URLs for the extension in `chrome://extensions` → Details), then use
-**Pick a badge** on a `SAST ✦` chip. A new row is added every 3 seconds.
+Open `demo/index.html` (allow file URLs for the extension in `chrome://extensions` → Details).
+The `SAST ✦` rows turn gold straight away, and a new row is added every 3 seconds.

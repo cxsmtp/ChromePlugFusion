@@ -11,12 +11,7 @@
     .row { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 10px; }
     .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #d0d7de; cursor: pointer; }
     button { width: 100%; padding: 7px; margin-top: 6px; border: 1px solid #d0d7de; border-radius: 6px; background: #f6f8fa; cursor: pointer; font: inherit; }
-    button.primary { background: #b8860b; color: #fff; border-color: #9a7009; }
-    ul { list-style: none; padding: 0; margin: 4px 0; }
-    li { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid #eee; }
-    li button { width: auto; margin: 0; padding: 1px 8px; }
     .hint { color: #656d76; font-size: 12px; }
-    h2 { font-size: 13px; margin: 14px 0 4px; }
   </style>
 </head>
 <body>
@@ -30,12 +25,7 @@
 
   <label>Only words <input type="text" id="words" placeholder="any word (e.g. SAST, SCA)" /></label>
 
-  <h2>Learned icons</h2>
-  <ul id="learned"></ul>
-  <div class="hint" id="noLearned">None yet. Built-in sparkle detection is used.</div>
-  <button class="primary" id="pick">Pick a badge on this page</button>
-  <div class="hint" id="status" style="color:#d1242f"></div>
-  <div class="hint">Click the exact badge (e.g. <b>SAST ✦</b>) once. Every bordered badge with the same icon is then matched, whatever its word.</div>
+  <div class="hint">Highlights automatically wherever the ✦ sparkle icon appears. No setup needed.</div>
 
   <button id="reset">Reset colours to gold</button>
 

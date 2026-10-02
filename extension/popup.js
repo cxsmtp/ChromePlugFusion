@@ -2,8 +2,7 @@ const DEFAULTS = {
   enabled: true,
   lineColor: "#ffd700",
   accentColor: "#b8860b",
-  words: "",
-  learned: []
+  words: ""
 };
 
 // [line colour, border colour]
@@ -24,19 +23,6 @@ function render(s) {
   $("lineColor").value = s.lineColor;
   $("accentColor").value = s.accentColor;
   $("words").value = s.words;
-
-  const list = $("learned");
-  list.innerHTML = "";
-  s.learned.forEach((item, i) => {
-    const li = document.createElement("li");
-    li.textContent = (item.label || "(no text)") + " ✦";
-    const del = document.createElement("button");
-    del.textContent = "Remove";
-    del.onclick = () => save({ learned: s.learned.filter((_, j) => j !== i) });
-    li.appendChild(del);
-    list.appendChild(li);
-  });
-  $("noLearned").style.display = s.learned.length ? "none" : "block";
 }
 
 PRESETS.forEach(([line, accent]) => {
@@ -53,25 +39,6 @@ $("lineColor").oninput = (e) => save({ lineColor: e.target.value });
 $("accentColor").oninput = (e) => save({ accentColor: e.target.value });
 $("words").onchange = (e) => save({ words: e.target.value });
 $("reset").onclick = () => save({ lineColor: DEFAULTS.lineColor, accentColor: DEFAULTS.accentColor });
-
-$("pick").onclick = async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const ask = () => chrome.tabs.sendMessage(tab.id, { type: "startPick" }, { frameId: 0 });
-  try {
-    await ask();
-  } catch (_) {
-    // The tab was open before the extension was installed/updated: inject it now.
-    try {
-      await chrome.scripting.insertCSS({ target: { tabId: tab.id, allFrames: true }, files: ["content.css"] });
-      await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["content.js"] });
-      await ask();
-    } catch (err) {
-      $("status").textContent = "Can't run on this page (Chrome blocks extensions on chrome:// pages and the Web Store).";
-      return;
-    }
-  }
-  window.close();
-};
 
 chrome.storage.sync.get(DEFAULTS, render);
 chrome.storage.onChanged.addListener(() => chrome.storage.sync.get(DEFAULTS, render));

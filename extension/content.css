@@ -19,28 +19,6 @@
   100% { background-color: var(--cpf-line-bg, #ffd700); }
 }
 
-/* Pick mode */
-.cpf-pick-hover {
-  outline: 2px dashed #0969da !important;
-  outline-offset: 2px !important;
-  cursor: crosshair !important;
-}
-
-#cpf-pick-banner {
-  position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2147483647;
-  background: #0969da;
-  color: #fff;
-  font: 13px/1.4 system-ui, sans-serif;
-  padding: 8px 14px;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  pointer-events: none;
-}
-
 /* Table cells often paint their own background; tint them too. */
 .cpf-hl-line > td,
 .cpf-hl-line > th,
