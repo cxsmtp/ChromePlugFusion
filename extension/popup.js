@@ -1,5 +1,6 @@
 const DEFAULTS = {
   enabled: true,
+  animate: true,
   lineColor: "#ffd700",
   accentColor: "#b8860b",
   words: ""
@@ -20,6 +21,7 @@ const save = (patch) => chrome.storage.sync.set(patch);
 
 function render(s) {
   $("enabled").checked = s.enabled;
+  $("animate").checked = s.animate;
   $("lineColor").value = s.lineColor;
   $("accentColor").value = s.accentColor;
   $("words").value = s.words;
@@ -35,6 +37,7 @@ PRESETS.forEach(([line, accent]) => {
 });
 
 $("enabled").onchange = (e) => save({ enabled: e.target.checked });
+$("animate").onchange = (e) => save({ animate: e.target.checked });
 $("lineColor").oninput = (e) => save({ lineColor: e.target.value });
 $("accentColor").oninput = (e) => save({ accentColor: e.target.value });
 $("words").onchange = (e) => save({ words: e.target.value });
