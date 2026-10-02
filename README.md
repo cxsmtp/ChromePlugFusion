@@ -42,6 +42,9 @@ extension discovers every open shadow root, watches it, and adopts its styleshee
   every 4 s heals anything missed (rows recycled by virtual scrolling, marks stripped by the page).
 - Settings are in `storage.local` and slider/colour changes are debounced (dragging a colour picker
   used to exceed Chrome's storage write quota).
+- No forced page layouts: icon outlines are read from the SVG path data (not `getTotalLength()`), and
+  passes run right after a frame is drawn. A forced layout can start the page's web-font downloads,
+  and Chrome then lists any font failure (e.g. `Failed to decode downloaded font`) under this extension.
 - After the extension is reloaded or updated, the old copy in a tab stops quietly and the new copy
   takes over; messaging and badge calls never throw on closed tabs.
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sparkle Highlighter",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Lights up every line and button that carries the ✦ sparkle (AI) icon, such as SAST ✦ in Checkmarx One, with a running gold laser.",
   "permissions": [
     "storage",

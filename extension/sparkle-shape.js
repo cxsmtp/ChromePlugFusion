@@ -27,30 +27,174 @@ globalThis.cpfSparkleShape = (() => {
     return shapes;
   }
 
-  // Sample each shape's outline and split it into its sub-paths (a move-to shows
-  // up as a jump between consecutive samples).
+  // ---- Outline from the SVG source, without asking the browser ----
+  // getTotalLength()/getPointAtLength() force a page layout, which can start web
+  // font downloads that Chrome then reports as this extension's errors. Parsing
+  // the path data ourselves avoids touching layout at all (and is faster).
+
+  const CURVE_STEPS = 16;
+  const NUMBER = /[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/y;
+
+  function arcPoints(x1, y1, rx, ry, angle, largeArc, sweep, x2, y2) {
+    if (!rx || !ry || (x1 === x2 && y1 === y2)) return [{ x: x2, y: y2 }];
+    rx = Math.abs(rx);
+    ry = Math.abs(ry);
+    const phi = (angle * Math.PI) / 180;
+    const cos = Math.cos(phi), sin = Math.sin(phi);
+    const dx = (x1 - x2) / 2, dy = (y1 - y2) / 2;
+    const x1p = cos * dx + sin * dy, y1p = -sin * dx + cos * dy;
+    const lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+    if (lambda > 1) {
+      rx *= Math.sqrt(lambda);
+      ry *= Math.sqrt(lambda);
+    }
+    const num = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
+    const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+    let k = Math.sqrt(Math.max(0, num / den));
+    if (largeArc === sweep) k = -k;
+    const cxp = (k * rx * y1p) / ry, cyp = (-k * ry * x1p) / rx;
+    const cx = cos * cxp - sin * cyp + (x1 + x2) / 2;
+    const cy = sin * cxp + cos * cyp + (y1 + y2) / 2;
+    const vecAngle = (ux, uy, vx, vy) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+    const ux = (x1p - cxp) / rx, uy = (y1p - cyp) / ry;
+    const start = vecAngle(1, 0, ux, uy);
+    let delta = vecAngle(ux, uy, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+    if (!sweep && delta > 0) delta -= 2 * Math.PI;
+    else if (sweep && delta < 0) delta += 2 * Math.PI;
+    const n = Math.max(4, Math.ceil(Math.abs(delta) / (Math.PI / 16)));
+    const pts = [];
+    for (let i = 1; i <= n; i++) {
+      const t = start + (delta * i) / n;
+      pts.push({
+        x: cos * rx * Math.cos(t) - sin * ry * Math.sin(t) + cx,
+        y: sin * rx * Math.cos(t) + cos * ry * Math.sin(t) + cy
+      });
+    }
+    return pts;
+  }
+
+  // Flattens SVG path data into sub-paths of points (curves and arcs sampled).
+  function parsePath(d) {
+    const parts = [];
+    let cur = null;
+    let x = 0, y = 0, startX = 0, startY = 0;
+    let cubicCtrl = null, quadCtrl = null;
+    let cmd = null;
+    let i = 0;
+
+    const skip = () => { while (i < d.length && /[\s,]/.test(d[i])) i++; };
+    const num = () => {
+      skip();
+      NUMBER.lastIndex = i;
+      const m = NUMBER.exec(d);
+      if (!m) throw new Error("bad number");
+      i = NUMBER.lastIndex;
+      return parseFloat(m[0]);
+    };
+    const flag = () => {
+      skip();
+      const c = d[i++];
+      if (c !== "0" && c !== "1") throw new Error("bad flag");
+      return c === "1";
+    };
+    const to = (px, py) => {
+      if (!cur) { cur = [{ x, y }]; parts.push(cur); }
+      cur.push({ x: px, y: py });
+      x = px;
+      y = py;
+    };
+
+    try {
+      for (;;) {
+        skip();
+        if (i >= d.length) break;
+        if (/[a-zA-Z]/.test(d[i])) cmd = d[i++];
+        else if (!cmd || cmd === "z" || cmd === "Z") break;
+        else if (cmd === "M") cmd = "L"; // extra pairs after a move-to are line-tos
+        else if (cmd === "m") cmd = "l";
+
+        const rel = cmd !== cmd.toUpperCase();
+        const ox = rel ? x : 0, oy = rel ? y : 0;
+        let nextCubic = null, nextQuad = null;
+
+        switch (cmd.toUpperCase()) {
+          case "M":
+            x = ox + num(); y = oy + num();
+            startX = x; startY = y;
+            cur = [{ x, y }];
+            parts.push(cur);
+            break;
+          case "L": { const nx = ox + num(); to(nx, oy + num()); break; }
+          case "H": to(ox + num(), y); break;
+          case "V": to(x, oy + num()); break;
+          case "C":
+          case "S": {
+            let c1x, c1y;
+            if (cmd.toUpperCase() === "C") { c1x = ox + num(); c1y = oy + num(); }
+            else if (cubicCtrl) { c1x = 2 * x - cubicCtrl.x; c1y = 2 * y - cubicCtrl.y; }
+            else { c1x = x; c1y = y; }
+            const c2x = ox + num(), c2y = oy + num(), ex = ox + num(), ey = oy + num();
+            const x0 = x, y0 = y;
+            for (let s = 1; s <= CURVE_STEPS; s++) {
+              const t = s / CURVE_STEPS, u = 1 - t;
+              to(u * u * u * x0 + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * ex,
+                 u * u * u * y0 + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * ey);
+            }
+            nextCubic = { x: c2x, y: c2y };
+            break;
+          }
+          case "Q":
+          case "T": {
+            let qx, qy;
+            if (cmd.toUpperCase() === "Q") { qx = ox + num(); qy = oy + num(); }
+            else if (quadCtrl) { qx = 2 * x - quadCtrl.x; qy = 2 * y - quadCtrl.y; }
+            else { qx = x; qy = y; }
+            const ex = ox + num(), ey = oy + num();
+            const x0 = x, y0 = y;
+            for (let s = 1; s <= CURVE_STEPS; s++) {
+              const t = s / CURVE_STEPS, u = 1 - t;
+              to(u * u * x0 + 2 * u * t * qx + t * t * ex, u * u * y0 + 2 * u * t * qy + t * t * ey);
+            }
+            nextQuad = { x: qx, y: qy };
+            break;
+          }
+          case "A": {
+            const rx = num(), ry = num(), rot = num(), large = flag(), sweep = flag();
+            const ex = ox + num(), ey = oy + num();
+            for (const p of arcPoints(x, y, rx, ry, rot, large, sweep, ex, ey)) to(p.x, p.y);
+            break;
+          }
+          case "Z":
+            to(startX, startY);
+            cur = null; // drawing after Z starts a new sub-path at the same point
+            break;
+          default:
+            throw new Error("unknown command");
+        }
+        cubicCtrl = nextCubic;
+        quadCtrl = nextQuad;
+      }
+    } catch (_) {
+      /* malformed data: use what was read so far */
+    }
+    return parts;
+  }
+
+  function parsePoints(shape) {
+    const nums = (shape.getAttribute("points") || "").match(/[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) || [];
+    const pts = [];
+    for (let k = 0; k + 1 < nums.length; k += 2) pts.push({ x: +nums[k], y: +nums[k + 1] });
+    if (pts.length && shape.tagName.toLowerCase() === "polygon") pts.push(pts[0]);
+    return pts;
+  }
+
   function subpaths(shapes) {
     const parts = [];
     for (const shape of shapes) {
-      let len = 0;
-      try { len = shape.getTotalLength(); } catch (_) { continue; }
-      if (!len) continue;
-      const n = 360;
-      const step = len / n;
-      let cur = [];
-      let prev = null;
-      for (let i = 0; i <= n; i++) {
-        const p = shape.getPointAtLength(Math.min(i * step, len));
-        if (prev && Math.hypot(p.x - prev.x, p.y - prev.y) > step * 1.5 + 1e-6) {
-          parts.push(cur);
-          cur = [];
-        }
-        cur.push(p);
-        prev = p;
-      }
-      parts.push(cur);
+      if (shape.tagName.toLowerCase() === "path") parts.push(...parsePath(shape.getAttribute("d") || ""));
+      else parts.push(parsePoints(shape));
     }
-    return parts.filter((p) => p.length >= 8);
+    return parts.filter((p) => p.length >= 3);
   }
 
   function bbox(points) {
@@ -71,10 +215,13 @@ globalThis.cpfSparkleShape = (() => {
     const cx = (b.x0 + b.x1) / 2;
     const cy = (b.y0 + b.y1) / 2;
     const r = new Array(BINS).fill(0);
-    // Interpolate between samples so every angle is covered.
+    // Interpolate along each segment so every angle is covered.
+    const stepLen = Math.hypot(b.w, b.h) / 300;
     for (let i = 1; i < points.length; i++) {
       const a = points[i - 1], c = points[i];
-      for (let t = 0; t <= 1; t += 0.1) {
+      const steps = Math.max(1, Math.ceil(Math.hypot(c.x - a.x, c.y - a.y) / stepLen));
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps;
         const x = a.x + (c.x - a.x) * t - cx;
         const y = a.y + (c.y - a.y) * t - cy;
         const bin = Math.floor(((Math.atan2(y, x) * 180 / Math.PI + 360 + BIN_DEG / 2) % 360) / BIN_DEG) % BINS;

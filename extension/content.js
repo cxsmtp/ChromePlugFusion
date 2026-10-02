@@ -368,8 +368,13 @@
   }
   const safeFlush = safely(flush);
 
+  // Passes run right after the browser has drawn a frame. Layout is up to date
+  // then, so reading styles/sizes never forces a layout of its own (a forced
+  // layout can start the page's web-font downloads, and Chrome would report any
+  // font failure as this extension's error).
   function schedule(delay = FLUSH_DELAY_MS) {
-    if (!flushTimer) flushTimer = setTimeout(safeFlush, delay);
+    if (flushTimer) return;
+    flushTimer = setTimeout(() => requestAnimationFrame(() => setTimeout(safeFlush, 0)), delay);
   }
 
   function onMutations(records) {
@@ -416,9 +421,7 @@
     style.setProperty("--cpf-speed", `${Math.min(5, Math.max(1, Number(settings.speed) || 2.4))}s`);
     clearAll();
     fullPass = true;
-    clearTimeout(flushTimer);
-    flushTimer = null;
-    safeFlush();
+    schedule(0);
   }
 
   // ---------- start ----------
