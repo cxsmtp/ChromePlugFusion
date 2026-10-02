@@ -1,20 +1,40 @@
 {
   "manifest_version": 3,
-  "name": "Badge Line Highlighter",
-  "version": "1.3.0",
-  "description": "Highlights the line the moment a button with a sparkle icon (e.g. \"SAST ✦\") appears on the page.",
-  "permissions": ["storage"],
+  "name": "Sparkle Highlighter",
+  "version": "2.0.0",
+  "description": "Lights up every line and button that carries the ✦ sparkle (AI) icon, such as SAST ✦ in Checkmarx One, with a running gold laser.",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Badge Line Highlighter",
+    "default_title": "Sparkle Highlighter",
     "default_popup": "popup.html"
+  },
+  "commands": {
+    "toggle-highlighting": {
+      "suggested_key": {
+        "default": "Alt+Shift+G"
+      },
+      "description": "Turn highlighting on or off"
+    }
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["sparkle-shape.js", "styles.js", "content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "sparkle-shape.js",
+        "styles.js",
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     }

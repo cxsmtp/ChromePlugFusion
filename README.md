@@ -1,44 +1,50 @@
-# Badge Line Highlighter (Chrome extension)
+# Sparkle Highlighter (Chrome extension)
 
-Highlights things on any web page the moment a sparkle icon (✦) appears, for example the
-`SAST ✦` chip and the **Triage with AI** / **Remediate with AI** buttons in Checkmarx One.
+Lights up everything that carries the ✦ sparkle (AI) icon, the moment it appears. Built for
+Checkmarx One (`SAST ✦`, **Triage with AI**, **Remediate with AI**) and works on any site.
 
 | What appears on the page | What the extension does |
 | --- | --- |
-| A bordered badge with the icon and any word, inside a table row / list item (`SAST ✦`, `SCA ✦`, …) | Lights the **whole row** gold with a bright **laser streak** running along it |
+| A badge with the icon inside a table row / list item (`SAST ✦`, `SCA ✦`, …) | Lights the **whole row** gold with a bright **laser streak** running along it |
 | A button with the icon (`✦ Triage with AI`, `✦ Remediate with AI`) | Fills the **button** with gold, with a light **running round its border** |
 | The icon anywhere else (`✦ Proposed Not Exploitable`, State column) | Makes the **icon glow** |
-| A badge without the icon (plain `SAST`, `Critical`, `Triage →`) | Nothing |
-
-New rows are detected live (`MutationObserver`), including in virtualized tables that reuse rows and
-inside **Shadow DOM**. Checkmarx One renders its results table and details panel inside shadow roots,
-so the extension finds every open shadow root, watches it, and adds its styles there too.
+| No icon (plain `SAST`, `Critical`, `Triage →`) | Nothing |
 
 ## Install
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and select the `extension/` folder.
-3. Reload the page you want to use it on. That's it: highlighting is automatic.
 
-## How the icon is recognised (no setup)
+That's it: highlighting is automatic. Updates are applied to open tabs without reloading them.
 
-Nothing to pick or configure. An icon counts as the sparkle when it is:
+## Popup & shortcut
 
-- a sparkle character (✦ ✧ ✨ …), or
-- an icon named like one (`sparkle`, `auto_awesome`, Checkmarx's `data-el-id-icon="ai"`, …), or
-- an SVG whose **outline is a four-pointed star**: long sharp points up/down/left/right with
-  pinched sides between them (`extension/sparkle-shape.js`). This is what catches unnamed icons
-  such as Checkmarx's. A `+`, `×`, shield, circle, 5-point star, logo, chevron, etc. don't match.
+- **Highlighting** on/off; also **Alt+Shift+G** anywhere (change it at `chrome://extensions/shortcuts`).
+- **Running laser** on/off, and **laser speed**.
+- **Colour** presets (gold by default) or custom line/edge colours.
+- **Only words**: e.g. `SAST, SCA` to limit which badges light their row (empty = any word).
+- Live count of lit lines/buttons on the current tab (also on the toolbar icon).
 
-## Options (toolbar popup)
+## How it works
 
-- **Line colour / Border colour**: gold by default; pick any colour or use a preset swatch.
-- **Only words**: e.g. `SAST, SCA` to restrict which badges highlight rows (empty = any word).
-- **Enabled**: turn highlighting on or off.
-- **Running laser animation**: turn the moving light off for a static gold highlight.
-- The toolbar icon shows how many lines/buttons are highlighted on the current tab.
+**Recognising the icon (no setup).** An icon counts as the sparkle when it is a sparkle character
+(✦ ✧ ✨ …), is named like one (`sparkle`, `auto_awesome`, Checkmarx's `data-el-id-icon="ai"`, …), or is
+an SVG whose **outline is a four-pointed star** (`sparkle-shape.js`): long sharp points up/down/left/right
+with pinched sides. A `+`, `×`, shield, circle, 5-point star, logo, chevron, etc. don't match.
+
+**Shadow DOM.** Checkmarx One renders its results table and details panel inside shadow roots. The
+extension discovers every open shadow root, watches it, and adopts its stylesheet there.
+
+**Stability.**
+- Marks are `data-cpf-*` attributes, not classes. Frameworks such as React rewrite `class` when you
+  click, select or hover a row, which used to switch the highlight off.
+- Every pass re-applies marks; only changed parts of the page are rescanned, and a cheap full pass
+  every 4 s heals anything missed (rows recycled by virtual scrolling, marks stripped by the page).
+- Settings are in `storage.local` and slider/colour changes are debounced (dragging a colour picker
+  used to exceed Chrome's storage write quota).
+- After the extension is reloaded or updated, the old copy in a tab stops quietly and the new copy
+  takes over; messaging and badge calls never throw on closed tabs.
 
 ## Try it
 
 Open `demo/index.html` (allow file URLs for the extension in `chrome://extensions` → Details).
-The `SAST ✦` rows turn gold straight away, and a new row is added every 3 seconds.

@@ -1,9 +1,12 @@
-// Highlight styles. Kept in JS (not content.css) because they must also be added
-// inside every shadow root: page sections like Checkmarx's micro-frontends live in
-// Shadow DOM, where document-level CSS doesn't reach.
+// Highlight styles. Kept in JS (not a .css file) because they are also added
+// inside every shadow root: page sections like Checkmarx's micro-frontends live
+// in Shadow DOM, where document-level CSS doesn't reach.
+//
+// Selectors use data-cpf-* attributes (frameworks rewrite `class`, not these),
+// repeated for extra specificity so the gold also wins over a page's own
+// "selected row" / hover colours.
 
-// eslint-disable-next-line no-unused-vars
-const cpfStyles = `
+globalThis.cpfStyles = `
 /* Lets the light run around button borders (registration is document-wide). */
 @property --cpf-angle {
   syntax: "<angle>";
@@ -14,11 +17,11 @@ const cpfStyles = `
 /* ---- Lines: gold, with a bright laser streak sweeping along them ----
    background-attachment: fixed puts every cell on one shared, viewport-sized
    canvas, so the streak runs continuously across all the cells of a row. */
-.cpf-hl-line,
-.cpf-hl-line > td,
-.cpf-hl-line > th,
-.cpf-hl-line > [role="gridcell"],
-.cpf-hl-line > [role="cell"] {
+[data-cpf-line][data-cpf-line][data-cpf-line],
+[data-cpf-line][data-cpf-line] > td,
+[data-cpf-line][data-cpf-line] > th,
+[data-cpf-line][data-cpf-line] > [role="gridcell"],
+[data-cpf-line][data-cpf-line] > [role="cell"] {
   background-color: var(--cpf-line-bg, #ffd700) !important;
   background-image: linear-gradient(100deg,
       rgba(255, 255, 255, 0) 0%,
@@ -31,14 +34,23 @@ const cpfStyles = `
   background-size: 30vw 100vh !important;
   background-repeat: no-repeat !important;
   background-attachment: fixed !important;
-  animation: cpf-laser var(--cpf-speed, 2.2s) linear infinite !important;
+  animation: cpf-laser var(--cpf-speed, 2.4s) linear infinite !important;
   animation-play-state: var(--cpf-play, running) !important;
+  transition: background-color 0.25s ease !important;
 }
 
-.cpf-hl-line > td:first-child,
-.cpf-hl-line > [role="gridcell"]:first-child,
-.cpf-hl-line > [role="cell"]:first-child,
-.cpf-hl-line:not(tr):not([role="row"]) {
+/* Gold edge on the left of the line, and a fine gold rule underneath. */
+[data-cpf-line][data-cpf-line] > td,
+[data-cpf-line][data-cpf-line] > [role="gridcell"],
+[data-cpf-line][data-cpf-line] > [role="cell"] {
+  box-shadow: inset 0 -1px 0 var(--cpf-accent, #b8860b) !important;
+}
+[data-cpf-line][data-cpf-line] > td:first-child,
+[data-cpf-line][data-cpf-line] > [role="gridcell"]:first-child,
+[data-cpf-line][data-cpf-line] > [role="cell"]:first-child {
+  box-shadow: inset 4px 0 0 var(--cpf-accent, #b8860b), inset 0 -1px 0 var(--cpf-accent, #b8860b) !important;
+}
+[data-cpf-line][data-cpf-line]:not(tr):not([role="row"]) {
   box-shadow: inset 4px 0 0 var(--cpf-accent, #b8860b) !important;
 }
 
@@ -48,15 +60,16 @@ const cpfStyles = `
 }
 
 /* The badge that triggered the line (e.g. "SAST ✦"). */
-.cpf-hl-badge:not(.cpf-hl-button) {
+[data-cpf-badge][data-cpf-badge] {
   outline: 2px solid var(--cpf-accent, #b8860b) !important;
   outline-offset: 1px !important;
   box-shadow: 0 0 8px 2px var(--cpf-line-bg, #ffd700) !important;
+  border-radius: 4px;
 }
 
 /* ---- Buttons ("Triage with AI", "Remediate with AI"): gold, with a light
    running round and round the border ---- */
-.cpf-hl-button {
+[data-cpf-button][data-cpf-button] {
   border: 2px solid transparent !important;
   background:
     linear-gradient(var(--cpf-line-bg, #ffd700), var(--cpf-line-bg, #ffd700)) padding-box,
@@ -68,11 +81,10 @@ const cpfStyles = `
       var(--cpf-accent, #b8860b) 360deg) border-box !important;
   color: #3d2e00 !important;
   box-shadow: 0 0 12px var(--cpf-line-bg, #ffd700) !important;
-  animation: cpf-orbit var(--cpf-speed, 2.2s) linear infinite !important;
+  animation: cpf-orbit var(--cpf-speed, 2.4s) linear infinite !important;
   animation-play-state: var(--cpf-play, running) !important;
 }
-
-.cpf-hl-button * {
+[data-cpf-button][data-cpf-button] * {
   color: #3d2e00 !important;
 }
 
@@ -81,7 +93,7 @@ const cpfStyles = `
 }
 
 /* ---- Every sparkle icon glows ---- */
-.cpf-hl-icon {
+[data-cpf-icon][data-cpf-icon] {
   color: var(--cpf-accent, #b8860b) !important;
   animation: cpf-glow 1.2s ease-in-out infinite alternate !important;
   animation-play-state: var(--cpf-play, running) !important;

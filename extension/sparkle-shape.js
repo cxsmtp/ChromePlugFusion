@@ -8,8 +8,9 @@
 // (blunt arm ends), an "×" (points on the diagonals), circles, shields, logos,
 // chevrons, etc.
 
-// eslint-disable-next-line no-unused-vars
-const cpfSparkleShape = (() => {
+// Assigned on globalThis (not `const`) so the file can be injected again after an
+// extension update without a "has already been declared" error.
+globalThis.cpfSparkleShape = (() => {
   const GEOMETRY = "path, polygon, polyline";
   const BIN_DEG = 2;
   const BINS = 360 / BIN_DEG;
