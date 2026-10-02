@@ -56,13 +56,21 @@ $("reset").onclick = () => save({ lineColor: DEFAULTS.lineColor, accentColor: DE
 
 $("pick").onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  chrome.tabs.sendMessage(tab.id, { type: "startPick" }, () => {
-    if (chrome.runtime.lastError) {
-      alert("Reload the page first, then try again.");
+  const ask = () => chrome.tabs.sendMessage(tab.id, { type: "startPick" }, { frameId: 0 });
+  try {
+    await ask();
+  } catch (_) {
+    // The tab was open before the extension was installed/updated: inject it now.
+    try {
+      await chrome.scripting.insertCSS({ target: { tabId: tab.id, allFrames: true }, files: ["content.css"] });
+      await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["content.js"] });
+      await ask();
+    } catch (err) {
+      $("status").textContent = "Can't run on this page (Chrome blocks extensions on chrome:// pages and the Web Store).";
       return;
     }
-    window.close();
-  });
+  }
+  window.close();
 };
 
 chrome.storage.sync.get(DEFAULTS, render);

@@ -3,6 +3,10 @@
 // containing a word plus the target icon (e.g. "SAST ✦") appears.
 
 (() => {
+  // The popup may inject this script again into a tab that already has it.
+  if (window.__cpfLoaded) return;
+  window.__cpfLoaded = true;
+
   const DEFAULTS = {
     enabled: true,
     lineColor: "#ffd700", // gold
@@ -34,6 +38,9 @@
       return m ? "char:" + m[0] : null;
     }
     const tag = icon.tagName.toLowerCase();
+    // A wrapper like <span class="chip-icon"><svg/></span>: use the inner SVG instead,
+    // otherwise every chip icon (shield, sparkle, ...) would share the wrapper's class.
+    if (tag !== "svg" && tag !== "img" && icon.querySelector("svg, img")) return null;
     if (tag === "svg") {
       const use = icon.querySelector("use");
       const href = use && (use.getAttribute("href") || use.getAttribute("xlink:href"));
@@ -287,29 +294,46 @@
     const target = e.target;
     stopPick();
 
-    // Find the badge containing the click, then the icon inside it.
+    // Walk up from the click to the smallest element holding an icon, and take
+    // its icon (the clicked icon itself if the click landed on it).
+    let icon = null;
     let badge = null;
-    for (let el = target, d = 0; el && d < 6; d++, el = el.parentElement) {
-      if (isBadgeLike(el) && [...iconCandidates(el)].length) { badge = el; break; }
+    for (let el = target, d = 0; el && el !== document.body && d < 6; d++, el = el.parentElement) {
+      if (badgeWord(el).length > MAX_BADGE_TEXT) break;
+      icon = [...iconCandidates(el)].find((i) => iconSignature(i));
+      if (icon) { badge = el; break; }
     }
-    const icon = badge && [...iconCandidates(badge)][0];
     const sig = icon && iconSignature(icon);
     if (!sig) {
-      alert("Badge Line Highlighter: couldn't find an icon in that element. Try clicking right on the badge.");
+      toast("Couldn't find an icon there. Open the extension and try again, clicking right on the ✦ icon.", true);
       return;
     }
-    const label = badgeWord(badge);
+    const label = badgeWord(badge) || badgeWord(badge.parentElement);
     chrome.storage.sync.get(DEFAULTS, (cur) => {
       const learned = (cur.learned || []).filter((l) => l.sig !== sig);
       learned.push({ sig, label });
-      chrome.storage.sync.set({ learned });
+      chrome.storage.sync.set({ learned }, () => toast(`Learned the icon from "${label || "badge"}" ✦`));
     });
+  }
+
+  function toast(text, isError) {
+    const el = document.createElement("div");
+    el.id = "cpf-pick-banner";
+    el.textContent = text;
+    if (isError) el.style.background = "#d1242f";
+    document.documentElement.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
   }
 
   // ---------- wiring ----------
 
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === "startPick") startPick();
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg.type === "startPick") {
+      // Only the top frame runs pick mode; it answers so the popup knows it worked.
+      if (window !== window.top) return;
+      startPick();
+      sendResponse({ ok: true });
+    }
     if (msg.type === "rescan") queueScan();
   });
 
